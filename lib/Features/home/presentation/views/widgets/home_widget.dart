@@ -1,5 +1,7 @@
 import 'package:conditional_builder_null_safety/conditional_builder_null_safety.dart';
 import 'package:flutter/material.dart';
+import 'package:square_repos/Features/home/data/models/reprository_model/reprository_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Widget defaultFormField({
   required TextEditingController controller,
@@ -25,38 +27,67 @@ Widget defaultFormField({
       ),
     );
 
-Widget buildRepoItem() => InkWell(
-      onLongPress: () {},
+Widget buildRepoItem(context, ReprositoryModel model) => InkWell(
+      onLongPress: () {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Choose an option'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  launchURL(model.htmlUrl!);
+                },
+                child: const Text('Go to Repository'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  launchURL(model.owner!.htmlUrl!);
+                },
+                child: const Text('Go to Owner'),
+              ),
+            ],
+          ),
+        );
+      },
       child: Container(
-        color: Colors.lightGreen,
+        color: getItemColor(model),
         padding: const EdgeInsets.all(20.0),
-        child: const Column(
+        child: Column(
           children: [
             Row(
               children: [
-                Text('Name:'),
-                SizedBox(
+                const Text('Name:'),
+                const SizedBox(
                   width: 5,
                 ),
-                Text('name'),
+                Text(model.name ?? 'no name'),
               ],
             ),
             Row(
               children: [
-                Text('Description:'),
-                SizedBox(
+                const Text('Description:'),
+                const SizedBox(
                   width: 5,
                 ),
-                Text('description'),
+                Expanded(
+                  child: Text(
+                    model.description ?? 'no description',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             Row(
               children: [
-                Text('Owner:'),
-                SizedBox(
+                const Text('Owner:'),
+                const SizedBox(
                   width: 5,
                 ),
-                Text('owner'),
+                Text(model.owner?.login ?? 'no owner'),
               ],
             ),
           ],
@@ -73,13 +104,31 @@ Widget myDivider() => Padding(
         color: Colors.grey[300],
       ),
     );
-Widget repoBuilder() => ConditionalBuilder(
-      condition: true,
+Widget reposBuilder({required List<ReprositoryModel> repos}) =>
+    ConditionalBuilder(
+      condition: repos.isNotEmpty,
       builder: (context) => ListView.separated(
         physics: const BouncingScrollPhysics(),
-        itemBuilder: (context, index) => buildRepoItem(),
+        itemBuilder: (context, index) => buildRepoItem(context, repos[index]),
         separatorBuilder: (context, index) => myDivider(),
-        itemCount: 10,
+        itemCount: repos.length,
       ),
       fallback: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+Color? getItemColor(ReprositoryModel model) {
+  if (model.fork == false || model.fork == null) {
+    return Colors.lightGreen;
+  } else {
+    return Colors.white;
+  }
+}
+
+Future<void> launchURL(String urlString) async {
+  final Uri parsedUrl = Uri.parse(urlString);
+  if (await canLaunchUrl(parsedUrl)) {
+    await launchUrl(parsedUrl);
+  } else {
+    throw 'Could not launch $urlString';
+  }
+}
